@@ -32,25 +32,25 @@ class TransformerClassifier(nn.Module):
         self.projection = nn.Linear(input_dim, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout)
         encoder_layers = TransformerEncoderLayer(d_model=d_model, nhead = num_heads, dropout = dropout, dim_feedforward=dim_feedforward,batch_first=True)
-        self.transformer_encoder = TransformerEncoder(encoder_layers, num_layers, enable_nested_tensor = True)
+        self.transformer_encoder = TransformerEncoder(encoder_layers, num_layers)
         self.classification_head = nn.Linear(d_model, 1)
-        self.apply(self._init_weights)
+        # self.apply(self._init_weights)
 
-    def _init_weights(self, module):
-        if isinstance(module, nn.Linear):
-            # Xavier Initialization for Linear layers
-            nn.init.xavier_uniform_(module.weight)
-            if module.bias is not None:
-                nn.init.zeros_(module.bias)
+    # def _init_weights(self, module):
+    #     if isinstance(module, nn.Linear):
+    #         # Xavier Initialization for Linear layers
+    #         nn.init.xavier_uniform_(module.weight)
+    #         if module.bias is not None:
+    #             nn.init.zeros_(module.bias)
         
-        elif isinstance(module, nn.TransformerEncoderLayer):
-            # Kaiming initialization for Transformer encoder layers
-            nn.init.kaiming_uniform_(module.self_attn.in_proj_weight, nonlinearity='relu')
-            nn.init.zeros_(module.self_attn.in_proj_bias)
-            nn.init.kaiming_uniform_(module.linear1.weight, nonlinearity='relu')
-            nn.init.zeros_(module.linear1.bias)
-            nn.init.kaiming_uniform_(module.linear2.weight, nonlinearity='relu')
-            nn.init.zeros_(module.linear2.bias)
+    #     elif isinstance(module, nn.TransformerEncoderLayer):
+    #         # Kaiming initialization for Transformer encoder layers
+    #         nn.init.kaiming_uniform_(module.self_attn.in_proj_weight, nonlinearity='relu')
+    #         nn.init.zeros_(module.self_attn.in_proj_bias)
+    #         nn.init.kaiming_uniform_(module.linear1.weight, nonlinearity='relu')
+    #         nn.init.zeros_(module.linear1.bias)
+    #         nn.init.kaiming_uniform_(module.linear2.weight, nonlinearity='relu')
+    #         nn.init.zeros_(module.linear2.bias)
 
     def forward(self, src): # can add src_key_padding_mask
 
