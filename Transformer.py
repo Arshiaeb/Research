@@ -19,49 +19,34 @@ class MyDataset(Dataset):
         return self.features[idx], self.labels[idx]
     
 def create_padding_mask(tensor_input):
-    mask = (tensor_input.sum(dim=2) != 0).float()
+    mask = (tensor_input.sum(dim=2) == 0).float()
     return mask
     
 
-# Define the Transformer model for classification with padding and masking
+# Define the Transformer model for classification
 class TransformerClassifier(nn.Module):
-    def __init__(self, input_dim, d_model, num_heads, num_layers, dim_feedforward, dropout=0.15 ):
+    def __init__(self, input_dim, d_model, num_heads, num_layers, dim_feedforward, dropout=0.15):
 
         super(TransformerClassifier, self).__init__()
         self.model_dim = d_model
         self.projection = nn.Linear(input_dim, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout)
-        encoder_layers = TransformerEncoderLayer(d_model=d_model, nhead = num_heads, dropout = dropout, dim_feedforward=dim_feedforward,batch_first=True)
-        self.transformer_encoder = TransformerEncoder(encoder_layers, num_layers)
+        encoder_layer = TransformerEncoderLayer(d_model=d_model, nhead = num_heads, dropout = dropout, dim_feedforward=dim_feedforward,batch_first=True)
+        self.transformer_encoder = TransformerEncoder(encoder_layer, num_layers,enable_nested_tensor=False)
+        #self.layer_norm = nn.LayerNorm(d_model)
         self.classification_head = nn.Linear(d_model, 1)
-        # self.apply(self._init_weights)
 
-    # def _init_weights(self, module):
-    #     if isinstance(module, nn.Linear):
-    #         # Xavier Initialization for Linear layers
-    #         nn.init.xavier_uniform_(module.weight)
-    #         if module.bias is not None:
-    #             nn.init.zeros_(module.bias)
+
+    def forward(self, x):
+
+        x = self.projection(x) * torch.sqrt(torch.tensor(self.model_dim, dtype=torch.float32))
+        x = self.pos_encoder(x)
+        x = self.transformer_encoder(x,is_causal = False, src_key_padding_mask = create_padding_mask(x) ) 
+        #x = self.layer_norm(x)
+        x = x.mean(dim=1)
         
-    #     elif isinstance(module, nn.TransformerEncoderLayer):
-    #         # Kaiming initialization for Transformer encoder layers
-    #         nn.init.kaiming_uniform_(module.self_attn.in_proj_weight, nonlinearity='relu')
-    #         nn.init.zeros_(module.self_attn.in_proj_bias)
-    #         nn.init.kaiming_uniform_(module.linear1.weight, nonlinearity='relu')
-    #         nn.init.zeros_(module.linear1.bias)
-    #         nn.init.kaiming_uniform_(module.linear2.weight, nonlinearity='relu')
-    #         nn.init.zeros_(module.linear2.bias)
-
-    def forward(self, src): # can add src_key_padding_mask
-
-        src = self.projection(src) * torch.sqrt(torch.tensor(self.model_dim, dtype=torch.float32))
-
-        src = self.pos_encoder(src)
-        transformer_output = self.transformer_encoder(src,is_causal = False, src_key_padding_mask = create_padding_mask(src) ) # can add src_key_padding_mask
-        pooled_output = transformer_output.mean(dim=1)
-        
-        output = self.classification_head(pooled_output)
-        return output
+        x = self.classification_head(x)
+        return x
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout, max_len=650):
